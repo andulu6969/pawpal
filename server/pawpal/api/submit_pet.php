@@ -4,7 +4,6 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
-// submit_pet.php
 include_once("dbconnect.php");
 
 // Check if POST data is missing
@@ -42,10 +41,10 @@ foreach($images as $index => $base64) {
     }
 }
 
-// 4. Convert array of filenames back to JSON for database storage
+//Convert array of filenames back to JSON for database storage
 $str_filenames = json_encode($saved_filenames);
 
-// 5. Insert into Database
+//Insert into Database
 $sqlinsert = "INSERT INTO tbl_pets (user_id, pet_name, pet_type, category, description, image_paths, lat, lng) VALUES ('$userid', '$pet_name', '$pet_type', '$category', '$description', '$str_filenames', '$lat', '$lng')";
 
 if ($conn->query($sqlinsert) === TRUE) {

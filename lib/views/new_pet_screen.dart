@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io'; // ✅ Back to Mobile standard
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
@@ -16,19 +16,21 @@ class NewPetScreen extends StatefulWidget {
 }
 
 class _NewPetScreenState extends State<NewPetScreen> {
-  // Controllers
+  // Text editing controllers for form inputs
   TextEditingController nameController = TextEditingController();
   TextEditingController descController = TextEditingController();
   TextEditingController latController = TextEditingController();
   TextEditingController lngController = TextEditingController();
 
-  // Data
+  // Dropdown list data
   List<String> petTypes = ['Cat', 'Dog', 'Rabbit', 'Other'];
   List<String> categories = ['Adoption', 'Donation Request', 'Help/Rescue'];
+
+  // Default selections
   String selectedType = 'Cat';
   String selectedCategory = 'Adoption';
 
-  // Image List (Mobile uses File)
+  // List to store selected image files
   List<File> imageList = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -44,6 +46,8 @@ class _NewPetScreenState extends State<NewPetScreen> {
   Widget build(BuildContext context) {
     screenWidth = MediaQuery.of(context).size.width;
     screenHeight = MediaQuery.of(context).size.height;
+
+    // Limit width for larger screens
     if (screenWidth > 600) {
       screenWidth = 600;
     }
@@ -58,7 +62,7 @@ class _NewPetScreenState extends State<NewPetScreen> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  // --- 1. IMAGE PICKER (MyFuwu Style UI) ---
+                  // Image picker container
                   GestureDetector(
                     onTap: () {
                       pickImageDialog();
@@ -105,7 +109,7 @@ class _NewPetScreenState extends State<NewPetScreen> {
                                   padding: const EdgeInsets.all(8.0),
                                   child: Stack(
                                     children: [
-                                      // Image Display
+                                      // Display selected image
                                       Container(
                                         height: screenHeight / 3.5,
                                         width: screenWidth * 0.4,
@@ -119,7 +123,7 @@ class _NewPetScreenState extends State<NewPetScreen> {
                                           ),
                                         ),
                                       ),
-                                      // Delete Button
+                                      // Button to remove image
                                       Positioned(
                                         right: 0,
                                         top: 0,
@@ -144,7 +148,7 @@ class _NewPetScreenState extends State<NewPetScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // --- 2. INPUT FIELDS (MyFuwu Style) ---
+                  // Pet Name Input
                   TextField(
                     controller: nameController,
                     decoration: const InputDecoration(
@@ -154,6 +158,7 @@ class _NewPetScreenState extends State<NewPetScreen> {
                   ),
                   const SizedBox(height: 10),
 
+                  // Pet Type Dropdown
                   DropdownButtonFormField<String>(
                     value: selectedType,
                     decoration: InputDecoration(
@@ -172,6 +177,7 @@ class _NewPetScreenState extends State<NewPetScreen> {
                   ),
                   const SizedBox(height: 10),
 
+                  // Category Dropdown
                   DropdownButtonFormField<String>(
                     value: selectedCategory,
                     decoration: InputDecoration(
@@ -190,6 +196,7 @@ class _NewPetScreenState extends State<NewPetScreen> {
                   ),
                   const SizedBox(height: 10),
 
+                  // Description Input
                   TextField(
                     controller: descController,
                     maxLines: 3,
@@ -200,7 +207,7 @@ class _NewPetScreenState extends State<NewPetScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // --- 3. LOCATION ---
+                  // Location Display (Read Only)
                   Row(
                     children: [
                       Expanded(
@@ -228,10 +235,10 @@ class _NewPetScreenState extends State<NewPetScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // --- 4. SUBMIT BUTTON (MyFuwu Style) ---
+                  // Submit Button
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueGrey, // MyFuwu Color
+                      backgroundColor: Colors.blueGrey,
                       minimumSize: Size(screenWidth, 50),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -254,8 +261,7 @@ class _NewPetScreenState extends State<NewPetScreen> {
     );
   }
 
-  // --- LOGIC FUNCTIONS ---
-
+  // Shows dialog to choose between Camera or Gallery
   void pickImageDialog() {
     showDialog(
       context: context,
@@ -288,6 +294,7 @@ class _NewPetScreenState extends State<NewPetScreen> {
     );
   }
 
+  // Handles image selection and adds to list
   Future<void> _selectImage(ImageSource source) async {
     if (imageList.length >= 3) {
       ScaffoldMessenger.of(
@@ -299,13 +306,13 @@ class _NewPetScreenState extends State<NewPetScreen> {
     final XFile? pickedFile = await _picker.pickImage(source: source);
     if (pickedFile != null) {
       setState(() {
-        imageList.add(File(pickedFile.path)); // Mobile standard
+        imageList.add(File(pickedFile.path));
       });
     }
   }
 
+  // Validates input fields and shows confirmation dialog
   void showSubmitDialog() {
-    // 1. Manual Validation (MyFuwu Style)
     if (nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -334,7 +341,6 @@ class _NewPetScreenState extends State<NewPetScreen> {
       return;
     }
 
-    // 2. Confirmation Dialog
     showDialog(
       context: context,
       builder: (context) {
@@ -359,9 +365,9 @@ class _NewPetScreenState extends State<NewPetScreen> {
     );
   }
 
+  // Process images and send data to server
   void submitPet() {
-    // MyFuwu uses readAsBytesSync() (Synchronous)
-    // Convert List<File> to Base64 JSON
+    // Convert List<File> to Base64 JSON string
     List<String> base64Images = [];
     for (File img in imageList) {
       base64Images.add(base64Encode(img.readAsBytesSync()));
@@ -413,6 +419,7 @@ class _NewPetScreenState extends State<NewPetScreen> {
         });
   }
 
+  // Get current GPS location using Geolocator
   Future<void> _determinePosition() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
