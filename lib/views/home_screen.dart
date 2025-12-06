@@ -15,9 +15,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // MyFuwu Style Variables
+  // List to store the fetched pet data
   List petList = [];
+
+  // Status string for loading state or empty data messages
   String status = "Loading...";
+
   late double screenWidth, screenHeight;
 
   @override
@@ -28,9 +31,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // MyFuwu Responsive Logic
+    // Determine screen dimensions for responsive layout
     screenWidth = MediaQuery.of(context).size.width;
     screenHeight = MediaQuery.of(context).size.height;
+
+    // Constraint width for larger screens (e.g. tablets)
     if (screenWidth > 600) {
       screenWidth = 600;
     }
@@ -39,20 +44,23 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text("My Submissions"),
         actions: [
+          // Refresh Button
           IconButton(
             onPressed: () {
               loadPets();
             },
             icon: const Icon(Icons.refresh),
           ),
+          // Logout Button
           IconButton(
             onPressed: () {
+              // Clear navigation stack and return to login
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => const LoginScreen()),
               );
             },
-            icon: const Icon(Icons.exit_to_app), // Changed login to exit/logout
+            icon: const Icon(Icons.exit_to_app),
           ),
         ],
       ),
@@ -61,6 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
           width: screenWidth,
           child: Column(
             children: [
+              // Conditional rendering: Show message if list is empty, otherwise show list
               petList.isEmpty
                   ? Expanded(
                       child: Center(
@@ -82,22 +91,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: ListView.builder(
                         itemCount: petList.length,
                         itemBuilder: (BuildContext context, int index) {
-                          // Extract Data
+                          // Extract individual pet data
                           var pet = petList[index];
 
-                          // Handle Image JSON logic inside builder
+                          // Decode the JSON string of image paths stored in the database
                           List images = [];
                           try {
                             images = jsonDecode(pet['image_paths']);
                           } catch (e) {
+                            // Fallback if JSON parsing fails
                             images = [];
                           }
+                          // Get the first image as thumbnail, or empty string if none
                           String firstImage = images.isNotEmpty
                               ? images[0]
                               : "";
 
                           return Card(
-                            elevation: 4, // MyFuwu style
+                            elevation: 4,
                             margin: const EdgeInsets.symmetric(
                               vertical: 6,
                               horizontal: 8,
@@ -110,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // IMAGE (MyFuwu Style ClipRRect)
+                                  // Thumbnail Image with rounded corners
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(12),
                                     child: Container(
@@ -119,6 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       color: Colors.grey[200],
                                       child: firstImage.isNotEmpty
                                           ? Image.network(
+                                              // Construct full URL to assets folder
                                               "${MyConfig.baseUrl}/pawpal/assets/pets/$firstImage",
                                               fit: BoxFit.cover,
                                               errorBuilder:
@@ -140,13 +152,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                   const SizedBox(width: 12),
 
-                                  // TEXT AREA
+                                  // Text Details Area
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        // TITLE (Pet Name)
+                                        // Pet Name
                                         Text(
                                           pet['pet_name'].toString(),
                                           style: const TextStyle(
@@ -159,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                         const SizedBox(height: 4),
 
-                                        // DESCRIPTION
+                                        // Description Excerpt
                                         Text(
                                           pet['description'].toString(),
                                           style: const TextStyle(
@@ -172,7 +184,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                         const SizedBox(height: 6),
 
-                                        // TAG (Type/Category) - MyFuwu BlueGrey Tag
+                                        // Type/Category Tag
                                         Container(
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 8,
@@ -198,10 +210,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                   ),
 
-                                  // ARROW BUTTON (MyFuwu Style)
+                                  // Optional Action Button (Arrow)
                                   IconButton(
                                     onPressed: () {
-                                      // Optional: showDetailsDialog(index);
+                                      // Logic for details page can go here
                                     },
                                     icon: const Icon(
                                       Icons.arrow_forward_ios,
@@ -219,6 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+      // Floating Action Button to add new pet
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           await Navigator.push(
@@ -227,6 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
               builder: (context) => NewPetScreen(user: widget.user),
             ),
           );
+          // Reload list after returning from submission screen
           loadPets();
         },
         child: const Icon(Icons.add),
@@ -234,7 +248,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // MyFuwu Style Load Function
+  // Fetches pet data from PHP backend
   void loadPets() {
     petList.clear();
     setState(() {
@@ -251,18 +265,17 @@ class _HomeScreenState extends State<HomeScreen> {
           if (response.statusCode == 200) {
             var jsonResponse = jsonDecode(response.body);
 
-            // MyFuwu Logic Check
+            // Check backend status
             if (jsonResponse['status'] == 'success' &&
                 jsonResponse['data'] != null) {
-              // Check if data is not empty list
               if (jsonResponse['data'].isNotEmpty) {
                 setState(() {
                   petList = jsonResponse['data'];
-                  status = ""; // Clear status on success
+                  status = ""; // Clear status message on success
                 });
               } else {
                 setState(() {
-                  status = "No submissions yet"; // "Not Available" equivalent
+                  status = "No submissions yet";
                 });
               }
             } else {
