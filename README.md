@@ -1,95 +1,142 @@
-# 🐾 PawPal - Pet Adoption App (Midterm Submission)
+# 🐾 PawPal - Full Stack Pet Adoption App
 
-**PawPal** is a mobile application designed for pet adoption and donations. This repository contains the **Midterm Assignment**, which builds upon the User Authentication module to include a **Pet Submission & Listing Module**.
+**PawPal** is a comprehensive mobile application designed to connect pet owners with potential adopters and donors. This project demonstrates a full-stack implementation using **Flutter** for the frontend and a **Native PHP/MySQL** REST API for the backend.
 
-It features a full-stack implementation using **Flutter** (Mobile) for the frontend and **Native PHP/MySQL** for the backend.
+The app features secure authentication, geolocation services, a payment gateway integration, and complex CRUD operations.
 
 ---
 
-## 📱 Features implemented
+## 📱 Key Features
 
-### 1. User Authentication (Assignment 2)
-* **User Registration:** Full form validation (Name, Email, Phone), duplicate email check, and **SHA1** password hashing.
-* **User Login:** Secure authentication against MySQL.
-* **"Remember Me":** Uses `shared_preferences` to persist user credentials locally.
-* **Secure Logout:** Clears the navigation stack to prevent unauthorized back-navigation.
+### 1. User Module & Authentication
+* **Secure Registration & Login:** Form validation, duplicate email checks, and **SHA1** password hashing.
+* **Auto-Login:** "Remember Me" functionality using `shared_preferences`.
+* **Profile Management:** Users can edit their details and update their profile picture.
+    * *Technical Highlight:* Implemented **cache-busting** (`?v=timestamp`) to ensure profile image updates reflect immediately in the app.
 
-### 2. Pet Submission (Midterm Task)
-* **Multi-Image Upload:** Users can select up to **3 images** using the device Camera or Gallery.
-* **Geolocation:** Automatically captures the user's current **Latitude & Longitude** using `geolocator`.
-* **Dynamic Form:** Includes dropdowns for Pet Type and Category, with text validation.
-* **Base64 Encoding:** Images are converted to Base64 strings for secure JSON transmission to the PHP backend.
+### 2. Pet Listing & Management (CRUD)
+* **Public Feed:** View all pets available for adoption or needing donations.
+* **Search & Filter:** Dynamic SQL queries allow users to **Search by Name** and **Filter by Category** (Cat, Dog, Rabbit, etc.) simultaneously.
+* **Submit Pet:** Upload up to **3 images** (Base64 encoded), auto-capture **GPS location**, and select pet health/gender statuses.
+* **My Listings:** Users can view and **Delete** their own submissions.
 
-### 3. Main Page Listing
-* **Dynamic Listing:** Fetches and displays pets submitted by the logged-in user.
-* **Thumbnail Handling:** Decodes JSON image paths to display the first image as a thumbnail.
-* **Empty State:** Displays a friendly "No submissions yet" message when the list is empty.
+### 3. Adoption System
+* **Adoption Requests:** Users can request to adopt a specific pet by sending a motivation message.
+* **Ownership Logic:** The app prevents users from adopting or donating to their own pets (buttons are disabled for owners).
+
+### 4. Donation Module & Payment Gateway
+* **Flexible Donations:** Support for **Money**, **Food**, and **Medical** supplies.
+* **Billplz Integration:** Integrated the **Billplz Sandbox API** to process monetary donations via an external secure browser.
+* **Donation History:** Users can view a history of their contributions, tracking the status (`Success`, `Failed`, `Pending`) and which pet received the donation.
+* **Validation:** Strict input formatters ensure only valid currency amounts are entered.
 
 ---
 
 ## 🛠️ Tech Stack
 
-* **Frontend:** Flutter (Dart)
-    * `http`: REST API communication.
-    * `image_picker`: Camera/Gallery access.
-    * `geolocator`: GPS location retrieval.
-    * `shared_preferences`: Local storage.
-* **Backend:** Native PHP (No frameworks).
-    * `file_put_contents`: For saving binary image data (Requirement).
-    * `json_encode/decode`: For handling API responses.
-    * `mysqli`: For database connection.
-* **Database:** MySQL (XAMPP/phpMyAdmin).
+### Frontend (Flutter)
+* **Language:** Dart
+* **Key Packages:**
+    * `http`: For REST API communication.
+    * `image_picker`: For selecting images from Camera/Gallery.
+    * `geolocator`: For capturing real-time GPS coordinates.
+    * `shared_preferences`: For local data persistence.
+    * `url_launcher`: For opening the Payment Gateway.
+    * `flutter/services`: For input formatting and validation.
+
+### Backend (Native PHP)
+* **API:** Custom REST API (JSON).
+* **Database:** MySQL (MariaDB).
+* **Security:** Prepared statements and input sanitization.
+* **Payment:** cURL requests to Billplz API.
 
 ---
 
+## 📂 Database Schema
 
-## 🚀 Setup Guide
-
-### 1️⃣ Backend Setup (XAMPP)
-1.  Navigate to your XAMPP installation folder: `C:\xampp\htdocs\`.
-2.  Create a folder named **`pawpal`**.
-3.  Inside `pawpal`, create the following structure:
-    ```text
-    pawpal/
-    ├── api/                # Contains all PHP logic scripts
-    │   ├── register_user.php
-    │   ├── login_user.php
-    │   ├── submit_pet.php
-    │   └── load_pets.php
-    │   └── dbconnect.php
-    └── assets/
-        └── pets/           # (Empty folder) Images will be saved here
-    ```
-
-### 2️⃣ Database Setup
-1.  Open **phpMyAdmin** and create a database named `pawpal_db`.
-2.  Run the following SQL commands to create the required tables:
+To set up the database, run the following SQL commands in **phpMyAdmin**:
 
 ```sql
--- Table 1: Users
-CREATE TABLE tbl_users (
-    user_id INT(11) NOT NULL AUTO_INCREMENT,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    phone VARCHAR(20) NOT NULL,
-    reg_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (user_id),
-    UNIQUE KEY email (email)
+-- 1. Users Table
+CREATE TABLE `tbl_users` (
+  `user_id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL UNIQUE,
+  `password` varchar(255) NOT NULL, -- SHA1 Hashed
+  `phone` varchar(20) NOT NULL,
+  `reg_date` datetime DEFAULT current_timestamp(),
+  PRIMARY KEY (`user_id`)
 );
 
--- Table 2: Pets
-CREATE TABLE tbl_pets (
-    pet_id INT(11) NOT NULL AUTO_INCREMENT,
-    user_id INT(11) NOT NULL,
-    pet_name VARCHAR(100) NOT NULL,
-    pet_type VARCHAR(50) NOT NULL,
-    category VARCHAR(50) NOT NULL,
-    description TEXT NOT NULL,
-    image_paths TEXT NOT NULL, -- Stores JSON array of filenames
-    lat VARCHAR(50) NOT NULL,
-    lng VARCHAR(50) NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (pet_id),
-    FOREIGN KEY (user_id) REFERENCES tbl_users(user_id)
+-- 2. Pets Table
+CREATE TABLE `tbl_pets` (
+  `pet_id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL, -- Owner ID
+  `pet_name` varchar(255) NOT NULL,
+  `pet_type` varchar(50) NOT NULL,
+  `pet_age` varchar(10) DEFAULT NULL,
+  `pet_gender` varchar(10) NOT NULL,
+  `pet_health` varchar(50) NOT NULL,
+  `category` varchar(50) NOT NULL, -- Adoption/Donation
+  `description` text NOT NULL,
+  `image_paths` text NOT NULL, -- JSON Array
+  `lat` varchar(50) NOT NULL,
+  `lng` varchar(50) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`pet_id`)
 );
+
+-- 3. Donations Table
+CREATE TABLE `tbl_donations` (
+  `donation_id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL, -- Donor ID
+  `pet_id` int(11) NOT NULL, -- Recipient Pet ID
+  `donation_type` varchar(20) NOT NULL, -- Money/Food/Medical
+  `amount` double(10,2) NOT NULL,
+  `description` varchar(255) NOT NULL,
+  `payment_status` varchar(20) NOT NULL, -- Success/Pending/Failed
+  `donation_date` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`donation_id`)
+);
+
+-- 4. Adoptions Table
+CREATE TABLE `tbl_adoptions` (
+  `adoption_id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL, -- Adopter ID
+  `pet_id` int(11) NOT NULL,
+  `status` varchar(20) NOT NULL DEFAULT 'Pending',
+  `message` text DEFAULT NULL,
+  `date_created` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`adoption_id`)
+);
+```
+
+## 🚀 Installation & Setup
+
+### 1. Server Configuration (XAMPP)
+1.  Locate your XAMPP `htdocs` folder (e.g., `C:\xampp\htdocs\`).
+2.  Create a folder named **`pawpal`**.
+3.  Inside `pawpal`, create an **`api`** folder and an **`assets`** folder.
+4.  Put all `.php` files inside the **`api`** folder.
+5.  Create subfolders `assets/pets` and `assets/profile` for image storage.
+
+### 2. API Configuration
+1.  Open `dbconnect.php` and configure your database credentials:
+    ```php
+    $servername = "localhost";
+    $username   = "root";
+    $password   = "";
+    $dbname     = "pawpal_db";
+    ```
+2.  Update the `payment.php` file with your **Billplz API Key** and **Collection ID**.
+
+### 3. Flutter Configuration
+1.  Open `lib/myconfig.dart`.
+2.  Update the `baseUrl` to match your local IP address:
+    ```dart
+    class MyConfig {
+      static const String baseUrl = "http://192.168.x.x"; 
+    }
+    ```
+3.  Run `flutter pub get` to install dependencies.
+4.  Run `flutter run` to launch the app.
