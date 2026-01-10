@@ -12,6 +12,7 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  // Input Controllers to capture text
   TextEditingController nameController = TextEditingController();
   TextEditingController emailController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
@@ -19,19 +20,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
   TextEditingController confirmPasswordController = TextEditingController();
 
   late double height, width;
-  bool visible = true;
+  bool visible = true; // For password visibility toggle
 
+  // GlobalKey allows us to trigger validation on all Form fields at once
   final formKey = GlobalKey<FormState>();
 
   @override
   Widget build(BuildContext context) {
+    // Responsive Layout Logic
     height = MediaQuery.of(context).size.height;
     width = MediaQuery.of(context).size.width;
+
+    // Web/Tablet constraint: Keep form centered and manageable size
     if (width > 400) {
       width = 400;
-    } else {
-      width = width;
     }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Register Page')),
       body: Center(
@@ -40,7 +44,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
             child: SizedBox(
               width: width,
-              // 3. Wrap everything in a Form widget
+              // --- FORM WIDGET ---
+              // Wraps all text fields to enable centralized validation
               child: Form(
                 key: formKey,
                 child: Column(
@@ -51,7 +56,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 5),
 
-                    // Name
+                    // --- INPUT FIELDS ---
+
+                    // Name Field
                     TextFormField(
                       controller: nameController,
                       validator: (val) =>
@@ -64,7 +71,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 10),
 
-                    // Email
+                    // Email Field
                     TextFormField(
                       controller: emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -84,7 +91,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 10),
 
-                    // Phone
+                    // Phone Field
                     TextFormField(
                       controller: phoneController,
                       keyboardType: TextInputType.phone,
@@ -98,7 +105,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 10),
 
-                    // Password
+                    // Password Field
                     TextFormField(
                       controller: passwordController,
                       obscureText: visible,
@@ -122,7 +129,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 10),
 
-                    // Confirm Password
+                    // Confirm Password Field
                     TextFormField(
                       controller: confirmPasswordController,
                       obscureText: visible,
@@ -141,6 +148,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 20),
 
+                    // --- BUTTONS ---
+
                     // Register Button
                     SizedBox(
                       width: double.infinity,
@@ -154,9 +163,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 10),
 
-                    // Login Link
+                    // Navigation to Login
                     TextButton(
                       onPressed: () {
+                        // Pop removes the register screen from stack
                         Navigator.pop(context);
                         Navigator.push(
                           context,
@@ -177,8 +187,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  // --- LOGIC 1: CONFIRMATION DIALOG ---
+  // Validates the form and asks for user confirmation before sending data
   void registerDialog() {
-    // 4. Check Validation using the Form Key
+    // Check all validators in the Form widget
     if (!formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please fix the errors in red")),
@@ -186,7 +198,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    // Show confirmation
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -195,8 +206,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
-              registerUser();
+              Navigator.pop(context); // Close dialog
+              registerUser(); // Proceed to backend
             },
             child: const Text('Yes'),
           ),
@@ -209,8 +220,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  // --- LOGIC 2: BACKEND INTEGRATION ---
   void registerUser() async {
-    // Show Loading
+    // 1. Show Loading UI
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -225,56 +237,72 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
 
-    // HTTP Post Request
+    // 2. Prepare Data
     String name = nameController.text;
     String email = emailController.text;
     String phone = phoneController.text;
     String password = passwordController.text;
 
     try {
-      http
-          .post(
-            Uri.parse("${MyConfig.baseUrl}/pawpal/api/register_user.php"),
-            body: {
-              "name": name,
-              "email": email,
-              "phone": phone,
-              "password": password,
-            },
-          )
-          .then((response) {
-            Navigator.pop(context); // Close Loading
+      // 3. Send HTTP Request
+      final response = await http.post(
+        Uri.parse("${MyConfig.baseUrl}/pawpal/api/register_user.php"),
+        body: {
+          "name": name,
+          "email": email,
+          "phone": phone,
+          "password": password,
+        },
+      );
 
-            print("Register Response: ${response.body}");
+      // Check if widget is still on screen (Async Gap safety)
+      if (!mounted) return;
 
-            if (response.statusCode == 200) {
-              var data = jsonDecode(response.body);
-              if (data['status'] == "success") {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Registration Success"),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (content) => const LoginScreen()),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text("Failed: ${data['message']}"),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            }
-          });
-    } catch (e) {
+      // 4. Close Loading Dialog
       Navigator.pop(context);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Server Error")));
+
+      // 5. Handle Response
+      if (response.statusCode == 200) {
+        var data = jsonDecode(response.body);
+
+        if (data['status'] == "success") {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Registration Success"),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Navigate to Login (PushReplacement prevents going back to Register)
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (content) => const LoginScreen()),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Failed: ${data['message']}"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Server Error"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      // 6. Error Handling (Network issues, etc.)
+      if (mounted) {
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context); // Ensure loading dialog closes on error
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 }

@@ -1,3 +1,3 @@
 class MyConfig {
-  static const String baseUrl = "http://10.29.48.31";
+  static const String baseUrl = "https://canorcannot.com/Andrew";
 }

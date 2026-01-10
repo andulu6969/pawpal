@@ -1,62 +1,68 @@
 <?php
-
+// Set headers to allow requests from the Flutter app
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
-
 include_once("dbconnect.php");
 
-// Check if POST data is missing
+// 1. Validation: Check if critical data (User ID, Name, and Image) is present
 if (!isset($_POST['user_id']) || !isset($_POST['pet_name']) || !isset($_POST['image'])) {
-    $response = array('status' => 'failed', 'data' => null);
-    sendJsonResponse($response);
+    sendJsonResponse(array('status' => 'failed', 'message' => 'Missing required data'));
     die();
 }
 
-// Capture Data
+// 2. Capture and Sanitize Input Data
 $userid = $_POST['user_id'];
-$pet_name = $_POST['pet_name'];
+$pet_name = addslashes($_POST['pet_name']); // Escape special characters for SQL safety
+$pet_age = $_POST['pet_age'];
+$pet_gender = $_POST['pet_gender'];
+$pet_health = $_POST['pet_health'];
 $pet_type = $_POST['pet_type'];
 $category = $_POST['category'];
-$description = $_POST['description'];
+$description = addslashes($_POST['description']);
 $lat = $_POST['lat'];
 $lng = $_POST['lng'];
-$encoded_string = $_POST['image']; // This is a JSON string of base64 images
+$encoded_string = $_POST['image']; 
 
-//Decode JSON List of Images
+// 3. Image Processing
+// The app sends a JSON string containing a list of Base64 encoded images.
+// We decode this string into a PHP array first.
 $images = json_decode($encoded_string);
 $saved_filenames = array();
 
+// Ensure the target directory exists before saving
+if (!file_exists("../assets/pets")) {
+    mkdir("../assets/pets", 0777, true);
+}
+
+// Loop through each image, decode from Base64, and save to the server
 foreach($images as $index => $base64) {
-    // Decode Base64 to binary
     $decoded_image = base64_decode($base64);
     
-    // Generate unique filename: pet_USERID_TIME_INDEX.jpg
+    // Generate a unique filename: pet_USERID_TIMESTAMP_INDEX.jpg
+    // This prevents filename conflicts.
     $filename = "pet_" . $userid . "_" . time() . "_" . $index . ".jpg";
-    $path = "../assets/pets/" . $filename; // Make sure 'assets' folder exists
+    $path = "../assets/pets/" . $filename;
     
-    // Save file using file_put_contents (Requirement)
+    // Save file and add name to array if successful
     if(file_put_contents($path, $decoded_image)){
         $saved_filenames[] = $filename;
     }
 }
 
-//Convert array of filenames back to JSON for database storage
+// Encode the list of saved filenames back to JSON for storage in the database
 $str_filenames = json_encode($saved_filenames);
 
-//Insert into Database
-$sqlinsert = "INSERT INTO tbl_pets (user_id, pet_name, pet_type, category, description, image_paths, lat, lng) VALUES ('$userid', '$pet_name', '$pet_type', '$category', '$description', '$str_filenames', '$lat', '$lng')";
+// 4. Insert Record into Database
+$sqlinsert = "INSERT INTO tbl_pets (user_id, pet_name, pet_age, pet_gender, pet_health, pet_type, category, description, image_paths, lat, lng) 
+              VALUES ('$userid', '$pet_name', '$pet_age', '$pet_gender', '$pet_health', '$pet_type', '$category', '$description', '$str_filenames', '$lat', '$lng')";
 
 if ($conn->query($sqlinsert) === TRUE) {
-    $response = array('status' => 'success', 'data' => null);
-    sendJsonResponse($response);
+    sendJsonResponse(array('status' => 'success', 'data' => null));
 } else {
-    $response = array('status' => 'failed', 'data' => null);
-    sendJsonResponse($response);
+    sendJsonResponse(array('status' => 'failed', 'data' => null));
 }
 
-function sendJsonResponse($sentArray)
-{
+// Helper Function: Returns response in JSON format
+function sendJsonResponse($sentArray) {
     header('Content-Type: application/json');
     echo json_encode($sentArray);
 }

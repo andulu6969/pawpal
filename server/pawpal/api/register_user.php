@@ -1,4 +1,7 @@
 <?php 
+
+header("Access-Control-Allow-Origin: *");
+
 	include 'dbconnect.php';
 
 	if($_SERVER['REQUEST_METHOD'] != 'POST'){

@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pawpal/models/user.dart';
@@ -16,26 +15,31 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  // Controllers to capture user input
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
 
+  // Form key for validation
   final formKey = GlobalKey<FormState>();
 
   late double height, width;
-  bool visible = true;
-  bool isChecked = false;
+  bool visible = true; // Toggle password visibility
+  bool isChecked = false; // "Remember Me" checkbox state
 
   @override
   void initState() {
     super.initState();
+    // Load saved credentials if "Remember Me" was previously checked
     loadPreferences();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Responsive screen dimensions
     height = MediaQuery.of(context).size.height;
     width = MediaQuery.of(context).size.width;
 
+    // Constrain width for larger screens (tablets/web)
     if (width > 400) {
       width = 400;
     }
@@ -48,18 +52,18 @@ class _LoginScreenState extends State<LoginScreen> {
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
             child: SizedBox(
               width: width,
-              // 3. Wrapped in Form Widget
               child: Form(
                 key: formKey,
                 child: Column(
                   children: [
+                    // Logo Asset
                     const Padding(
                       padding: EdgeInsets.all(16.0),
                       child: Icon(Icons.pets, size: 100, color: Colors.blue),
                     ),
                     const SizedBox(height: 5),
 
-                    // Email Field (TextFormField)
+                    // Email Input Field
                     TextFormField(
                       controller: emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -76,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 5),
 
-                    // Password Field (TextFormField)
+                    // Password Input Field
                     TextFormField(
                       controller: passwordController,
                       obscureText: visible,
@@ -100,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 5),
 
-                    // Remember Me Row
+                    // "Remember Me" Checkbox
                     Padding(
                       padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
                       child: Row(
@@ -131,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 5),
 
-                    // Register Link
+                    // Navigation to Registration
                     TextButton(
                       onPressed: () {
                         Navigator.push(
@@ -155,8 +159,10 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // --- Backend Logic ---
+
   void loginUser() {
-    //Check Validation
+    // 1. Validate Form Inputs
     if (!formKey.currentState!.validate()) {
       return;
     }
@@ -164,30 +170,31 @@ class _LoginScreenState extends State<LoginScreen> {
     String email = emailController.text.trim();
     String password = passwordController.text.trim();
 
-    // Show Loading
+    // 2. Show Progress Indicator
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
+    // 3. Send POST Request to PHP Backend
     http
         .post(
           Uri.parse('${MyConfig.baseUrl}/pawpal/api/login_user.php'),
           body: {'email': email, 'password': password},
         )
         .then((response) {
-          Navigator.pop(context); // Close loading
-
-          print("Login Response: ${response.body}");
+          Navigator.pop(context); // Dismiss loading dialog
 
           if (response.statusCode == 200) {
             var jsonResponse = response.body;
             var resarray = jsonDecode(jsonResponse);
 
             if (resarray['status'] == 'success') {
+              // 4. Parse User Data
               User user = User.fromJson(resarray['data'][0]);
-              // 3. Save Preferences if checked
+
+              // 5. Handle "Remember Me" Persistence
               savePreferences(isChecked);
 
               ScaffoldMessenger.of(context).showSnackBar(
@@ -197,12 +204,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               );
 
-              // 4. Navigate to Home
+              // 6. Navigate to Home Screen
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => HomeScreen(user: user)),
               );
             } else {
+              // Handle Login Failure (Wrong password/User not found)
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(resarray['message']),
@@ -211,6 +219,7 @@ class _LoginScreenState extends State<LoginScreen> {
               );
             }
           } else {
+            // Handle Server Errors (500, 404, etc.)
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text("Server Error"),
@@ -220,6 +229,7 @@ class _LoginScreenState extends State<LoginScreen> {
           }
         })
         .catchError((e) {
+          // Handle Network Errors (No internet, timeout)
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
@@ -227,23 +237,24 @@ class _LoginScreenState extends State<LoginScreen> {
         });
   }
 
-  // Save Preferences logic (Simplified)
+  // --- SharedPreferences Logic ---
+
+  // Saves email/password locally if "Remember Me" is checked
   void savePreferences(bool value) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     if (value) {
-      // Save inputs if "Remember Me" is checked
       await prefs.setString('email', emailController.text);
       await prefs.setString('password', passwordController.text);
       await prefs.setBool('rememberMe', value);
     } else {
-      // Clear inputs if unchecked
+      // Clear data if user unchecks the box
       await prefs.remove('email');
       await prefs.remove('password');
       await prefs.remove('rememberMe');
     }
   }
 
-  // Load Preferences logic
+  // Loads saved credentials on app startup
   void loadPreferences() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool rememberMe = prefs.getBool('rememberMe') ?? false;
